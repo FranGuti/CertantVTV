@@ -1,9 +1,8 @@
 import java.sql.*;
+import java.sql.Date;
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Scanner;
+import java.util.*;
 
 
 public class Vtv {
@@ -27,58 +26,58 @@ public class Vtv {
             Scanner scanner = new Scanner(System.in);
             String respuesta = scanner.nextLine();
 
-            while(!respuesta.equals("1") && !respuesta.equals("2") && !respuesta.equals("3")){         // Si es inválido el comando
+            while(!"1".equals(respuesta) && !"2".equals(respuesta) && !"3".equals(respuesta)){         // Si es inválido el comando
                 System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
                 respuesta = scanner.nextLine();
             }
 
-            if(respuesta.equals("1")){
+            if("1".equals(respuesta)){
 
                 System.out.println("(1) Reporte de automóviles, (2) Reporte de inspecciones, (3) Reporte Personal");
                 String respuestaDeReportes = scanner.nextLine();
 
                 //Chequeo la validez del comando
-                while(!respuestaDeReportes.equals("1") && !respuestaDeReportes.equals("2") && !respuestaDeReportes.equals("3")){
+                while(!"1".equals(respuestaDeReportes) && !"2".equals(respuestaDeReportes) && !"3".equals(respuestaDeReportes)){
                     System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
                     respuestaDeReportes = scanner.nextLine();
                 }
 
-                if(respuestaDeReportes.equals("1")){
+                if("1".equals(respuestaDeReportes)){
                     imprimirReporteDeAutomoviles();
                 }
-                if(respuestaDeReportes.equals("2")){
+                if("2".equals(respuestaDeReportes)){
                     imprimirReporteDeInspecciones();
                 }
-                if(respuestaDeReportes.equals("3")){
+                if("3".equals(respuestaDeReportes)){
                     System.out.println("Ingrese el número de DNI: ");
                     String dni = scanner.nextLine();
                     imprimirReportePersonal(dni);
                 }
             }
 
-            if(respuesta.equals("2")){
+            if("2".equals(respuesta)){
 
                 System.out.println("(1) Agregar inspección (2) Quitar Inspección (3) Modificar Inspección");
                 String respuestaABM = scanner.nextLine();
 
                 //Chequeo la validez del comando
-                while(!respuestaABM.equals("1") && !respuestaABM.equals("2") && !respuestaABM.equals("3")){
+                while(!"1".equals(respuestaABM) && !"2".equals(respuestaABM) && !"3".equals(respuestaABM)){
                     System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
                     respuesta = scanner.nextLine();
                 }
 
-                if(respuestaABM.equals("1")){
+                if("1".equals(respuestaABM)){
                     agregarInspeccion();
                 }
-                if(respuestaABM.equals("2")){
+                if("2".equals(respuestaABM)){
                     quitarInspeccion();
                 }
-                if(respuestaABM.equals("3")){
+                if("3".equals(respuestaABM)){
                     modificarInspeccion();
                 }
             }
 
-            if(respuesta.equals("3")){
+            if("3".equals(respuesta)){
                 System.out.println("Hasta luego");
                 break;
             }
@@ -109,16 +108,16 @@ public class Vtv {
         ResultSet rs = stmtReporteAutos.executeQuery(consultarVehiculos);
 
         while(rs.next()){
-            imprimirReporteDeAutomovilesPara(rs);
+            imprimirReporteDeAutomovilesPara(rs, "nombre");
         }
     }
 
     //Recibe un ResulSet con un vehiculo y su dueño e imprime por consola su correspondiente Reporte automotor
-    private static void imprimirReporteDeAutomovilesPara(ResultSet rs) {
+    private static void imprimirReporteDeAutomovilesPara(ResultSet rs, String duenio_nombre) throws SQLException {
         String dominio = rs.getString("dominio");
         String marca = rs.getString("marca");
         String modelo = rs.getString("modelo");
-        String duenio = rs.getString("nombre");
+        String duenio = rs.getString(duenio_nombre);
 
         Inspeccion inspeccion = new Inspeccion(dominio, marca, modelo, duenio);
         inspeccion.imprimirReporteDeAutomovil();
@@ -147,56 +146,85 @@ public class Vtv {
                         "WHERE d.dni = " + dni + ";";
 
         ResultSet rs = stmtReportePersonal.executeQuery(consultarVehiculos);
-        List<Vehiculo> vehiculos = new ArrayList<Vehiculo>();
 
         System.out.println("De que vehiculo desea observar el reporte?");
         System.out.println();
 
+        List<String> patentes = new ArrayList<String>();
+
         while(rs.next()){
-            imprimirReporteDeAutomovilesPara(rs);
+            String dominio = rs.getString("dominio");
+            patentes.add(dominio);
+            imprimirReporteDeAutomovilesPara(rs, "titular");
         }
 
         System.out.println("Indique el dominio del vehiculo: ");
 
-        /*while(true){
+        Scanner scanner = new Scanner(System.in);
+        String respuesta = scanner.nextLine();
+
+        while(!patentes.contains(respuesta)){
+
+            System.out.println("Dominio inválido, ingréselo nuevamente: ");
+            respuesta = scanner.nextLine();
+
+        }
+
+        rs = stmtReportePersonal.executeQuery(consultarVehiculos);
+
+        while(rs.next()){
+            if(respuesta.equals(rs.getString("dominio"))){
+
+                String marca = rs.getString("marca");
+                String modelo = rs.getString("modelo");
+                String dominio = rs.getString("dominio");
+
+                String titular = rs.getString("titular");
+                int documento = rs.getInt("dni");
+                boolean exento = rs.getBoolean("exento");
+
+                Date fecha = rs.getDate("fecha");
+                String estado = rs.getString("estado");
+                String nombreInspector = rs.getString("nombre_inspector");
 
 
-            Scanner scanner = new Scanner(System.in);
-            String respuesta = scanner.nextLine();
+                Map<String, String> observaciones = new HashMap<String, String>();
 
+                String luces = rs.getString("luces");
+                String patente = rs.getString("patente");
+                String espejos = rs.getString("espejos");
+                String chasis = rs.getString("chasis");
+                String vidrios = rs.getString("vidrios");
+                String seguridadEmergencia = rs.getString("seguridad_y_emergencia");
 
+                observaciones.put("luces", luces);
+                observaciones.put("patente", patente);
+                observaciones.put("espejos", espejos);
+                observaciones.put("chasis", chasis);
+                observaciones.put("vidrios", vidrios);
+                observaciones.put("seguridadEmergencia", seguridadEmergencia);
 
-            while(rs.next()){
+                Map<String, String> mediciones = new HashMap<String, String>();
 
-            /*String marca = rs.getString("marca");
-            String modelo = rs.getString("modelo");
-            String dominio = rs.getString("dominio");
+                String suspension = rs.getString("suspension");
+                String direccionTrenDelantero = rs.getString("dirección_y_tren_delantero");
+                String frenos = rs.getString("frenos");
+                String contaminacion = rs.getString("contaminacion");
 
-            String titular = rs.getString("titular");
-            int documento = rs.getInt("dni");
-            boolean exento = rs.getBoolean("exento");
+                mediciones.put("suspension", suspension);
+                mediciones.put("direccionTrenDelantero", direccionTrenDelantero);
+                mediciones.put("frenos", frenos);
+                mediciones.put("contaminacion", contaminacion);
 
-            Date fecha = rs.getDate("fecha");
-            String estado = rs.getString("estado");
-            String nombreInspector = rs.getString("nombre_inspector");
+                Inspeccion inspeccion = new Inspeccion(marca, modelo, dominio, titular, documento, exento,
+                                        fecha, estado, nombreInspector, observaciones, mediciones);
 
-            String luces = rs.getString("luces");
-            String patente = rs.getString("patente");
-            String espejos = rs.getString("espejos");
-            String chasis = rs.getString("chasis");
-            String vidrios = rs.getString("vidrios");
-            String SeguridadEmergencia = rs.getString("seguridad_y_emergencia");
+                inspeccion.imprimirReporteDetallado();
 
-            String suspension = rs.getString("suspension");
-            String direccionTrenDelantero = rs.getString("direccion_y_tren_delantero");
-            String frenos = rs.getString("frenos");
-            String contaminacion = rs.getString("contaminacion"); */
-
-
-
+                break;
 
             }
-        }*/
+        }
 
 
     }

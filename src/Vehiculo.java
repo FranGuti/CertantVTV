@@ -3,20 +3,21 @@ public class Vehiculo {
     String marca;
     String modelo;
     String dominio;
+    String duenio;
 
-    public Vehiculo(String estado, String marca, String modelo, String dominio){
-        if(estado.equals("apto")){
-            this.estado = new EstadoVTVApto();
-        }
-        if(estado.equals("rechazado")){
-            this.estado = new EstadoVTVRechazada();
-        }
-        if(estado.equals("condicional")){
-            this.estado = new EstadoVTVCondicional();
-        }
-        this.marca = marca;
-        this.modelo = modelo;
+    public Vehiculo(String dominio, String marca, String modelo, String duenio) {
         this.dominio = dominio;
+        this.marca = marca;
+        this. modelo = modelo;
+        this.duenio = duenio;
     }
 
+    public void imprimirReporteSencillo() {
+        System.out.println("DOMINIO: "+dominio + "  |  MARCA: " + marca + "  | MODELO: " + modelo +
+                "  | PROPIETARIO: " + duenio);
+    }
+
+    public void imprimirResumen() {
+        System.out.printf("marca '%s', modelo '%s', patente '%s'%n", marca, modelo, dominio);
+    }
 }
