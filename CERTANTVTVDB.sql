@@ -152,7 +152,7 @@ VALUES
 SELECT * FROM inspecciones;
 
 
-SELECT v.*, d.nombre AS titular, d.dni, d.exento, i.*, ins.nombre AS inspector, o.*, m.*
+SELECT v.*, d.nombre AS titular, d.dni, d.exento, i.*, ins.nombre AS nombre_inspector, o.*, m.*
 FROM vehiculos v 
 	INNER JOIN dueños d 
 		ON v.dueño = d.id
@@ -164,4 +164,12 @@ FROM vehiculos v
 		ON i.observacion = o.id 
 	INNER JOIN mediciones m
 		ON i.medicion = m.id
-	WHERE d.dni = 00000001;
+	ORDER BY i.fecha desc;
+
+SELECT v.marca, v.modelo, v.dominio, d.nombre, i.estado, i.fecha
+FROM vehiculos v
+	INNER JOIN dueños d
+		ON v.dueño = d.id
+	INNER JOIN inspecciones i 
+		ON v.id = i.vehiculo
+	WHERE i.estado = 'apto';

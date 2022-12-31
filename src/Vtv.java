@@ -1,16 +1,12 @@
 import java.sql.*;
 import java.sql.Date;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.*;
 
 
 public class Vtv {
     private static final Conexion con = new Conexion("certantvtv");
     private static Connection server;
-    LocalDate objDia = LocalDate.now();
-    DateTimeFormatter formateador = DateTimeFormatter.ofPattern("yyyy-MM-dd");
-    private final String dia = objDia.format(formateador);
+
 
     public static void main(String[] args) throws SQLException {
         server = con.conectar();
@@ -24,26 +20,19 @@ public class Vtv {
         while(true){
             System.out.println("(1) Ver reportes, (2) Agregar/Quitar/Modificar, (3) Salir");
             Scanner scanner = new Scanner(System.in);
-            String respuesta = scanner.nextLine();
-
-            while(!"1".equals(respuesta) && !"2".equals(respuesta) && !"3".equals(respuesta)){         // Si es inválido el comando
-                System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
-                respuesta = scanner.nextLine();
-            }
+            String respuesta = consultarInput(scanner, "1", "2", "3", "");
 
             if("1".equals(respuesta)){
 
                 System.out.println("(1) Reporte de automóviles, (2) Reporte de inspecciones, (3) Reporte Personal");
-                String respuestaDeReportes = scanner.nextLine();
-
-                //Chequeo la validez del comando
-                while(!"1".equals(respuestaDeReportes) && !"2".equals(respuestaDeReportes) && !"3".equals(respuestaDeReportes)){
-                    System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
-                    respuestaDeReportes = scanner.nextLine();
-                }
+                String respuestaDeReportes = consultarInput(scanner, "1", "2", "3", "");;
 
                 if("1".equals(respuestaDeReportes)){
-                    imprimirReporteDeAutomoviles();
+
+                    System.out.println("(1) Aptos, (2) Condicionales, (3) Rechazados, (4) Todos");
+
+                    String respuestaDeAutomoviles = consultarInput(scanner, "1", "2", "3", "4");
+                    imprimirReporteDeAutomoviles(respuestaDeAutomoviles);
                 }
                 if("2".equals(respuestaDeReportes)){
                     imprimirReporteDeInspecciones();
@@ -57,21 +46,30 @@ public class Vtv {
 
             if("2".equals(respuesta)){
 
-                System.out.println("(1) Agregar inspección (2) Quitar Inspección (3) Modificar Inspección");
+                System.out.println("(1) Agregar (2) Quitar (3) Modificar");
                 String respuestaABM = scanner.nextLine();
 
                 //Chequeo la validez del comando
                 while(!"1".equals(respuestaABM) && !"2".equals(respuestaABM) && !"3".equals(respuestaABM)){
                     System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
-                    respuesta = scanner.nextLine();
+                    respuestaABM = scanner.nextLine();
                 }
 
                 if("1".equals(respuestaABM)){
-                    agregarInspeccion();
+                    System.out.println("(1) Agregar una Inspección (2) Agregar un Inspector");
+                    String respuestaAlta = scanner.nextLine();
+
+                    //Chequeo la validez del comando
+                    while(!"1".equals(respuestaAlta) && !"2".equals(respuestaAlta)){
+                        System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
+                        respuestaAlta = scanner.nextLine();
+                    }
                 }
+
                 if("2".equals(respuestaABM)){
                     quitarInspeccion();
                 }
+
                 if("3".equals(respuestaABM)){
                     modificarInspeccion();
                 }
@@ -86,6 +84,16 @@ public class Vtv {
 
     }
 
+    private static String consultarInput(Scanner scanner, String s1, String s2, String s3, String s4) {
+        String respuesta = scanner.nextLine();
+        while(!s1.equals(respuesta) && !s2.equals(respuesta) && !s3.equals(respuesta) &&!s4.equals(respuesta)){
+            System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
+            respuesta = scanner.nextLine();
+        }
+        return respuesta;
+    }
+
+
     private static void agregarInspeccion() {
         System.out.println("Se agregó la inspección");
     }
@@ -99,28 +107,59 @@ public class Vtv {
     }
 
 
-    private static void imprimirReporteDeAutomoviles() throws SQLException {
+    private static void imprimirReporteDeAutomoviles(String pedido) throws SQLException {
         System.out.println("Reporte de Automóviles");
 
         Statement stmtReporteAutos =  server.createStatement();
 
-        String consultarVehiculos = "SELECT v.*, d.nombre FROM vehiculos v INNER JOIN dueños d on d.id = v.dueño;";
+        String consultarVehiculos = "SELECT v.*, d.nombre, MAX(i.fecha) AS fecha, i.estado " +
+                "FROM vehiculos v " +
+                "INNER JOIN dueños d " +
+                    "ON d.id = v.dueño " +
+                "INNER JOIN inspecciones i " +
+                    "ON v.id = i.vehiculo " +
+                "GROUP BY v.dominio";
+
+        if("1".equals(pedido)){
+            consultarVehiculos = consultarVehiculos + " HAVING i.estado = 'apto'";
+        }
+
+        if("2".equals(pedido)){
+            consultarVehiculos = consultarVehiculos + " HAVING i.estado = 'condicional'";
+        }
+
+        if("3".equals(pedido)){
+            consultarVehiculos = consultarVehiculos + " HAVING i.estado = 'rechazado'";
+        }
+        consultarVehiculos = consultarVehiculos + ";";
+        // si es 4 (todos) no tengo que agregar el where
+
+
         ResultSet rs = stmtReporteAutos.executeQuery(consultarVehiculos);
 
         while(rs.next()){
-            imprimirReporteDeAutomovilesPara(rs, "nombre");
+            imprimirReporteDeAutomovilesPara(rs, "nombre", true);
         }
     }
 
-    //Recibe un ResulSet con un vehiculo y su dueño e imprime por consola su correspondiente Reporte automotor
-    private static void imprimirReporteDeAutomovilesPara(ResultSet rs, String duenio_nombre) throws SQLException {
+    //Recibe un ResulSet, que contiene vehiculo y dueño, e imprime por consola los datos
+    private static void imprimirReporteDeAutomovilesPara(ResultSet rs, String duenio_nombre,
+                                                         Boolean conVencimiento) throws SQLException {
         String dominio = rs.getString("dominio");
         String marca = rs.getString("marca");
         String modelo = rs.getString("modelo");
         String duenio = rs.getString(duenio_nombre);
+        Date fecha = rs.getDate("fecha");
+        String estado = rs.getString("estado");
+        Inspeccion inspeccion = new Inspeccion(dominio, marca, modelo, duenio, fecha, estado);
 
-        Inspeccion inspeccion = new Inspeccion(dominio, marca, modelo, duenio);
-        inspeccion.imprimirReporteDeAutomovil();
+        if(conVencimiento){
+            inspeccion.imprimirReporteSencilloConVencimiento();
+        }
+        else{
+            inspeccion.imprimirReporteSencilloSinVencimiento();
+        }
+
     }
 
     private static void imprimirReporteDeInspecciones() {
@@ -154,8 +193,10 @@ public class Vtv {
 
         while(rs.next()){
             String dominio = rs.getString("dominio");
+            if(!patentes.contains(dominio)){
+                imprimirReporteDeAutomovilesPara(rs, "titular", false);
+            }
             patentes.add(dominio);
-            imprimirReporteDeAutomovilesPara(rs, "titular");
         }
 
         System.out.println("Indique el dominio del vehiculo: ");
@@ -163,7 +204,7 @@ public class Vtv {
         Scanner scanner = new Scanner(System.in);
         String respuesta = scanner.nextLine();
 
-        while(!patentes.contains(respuesta)){
+        while(!patentes.contains(respuesta) && patentes.size()>0){
 
             System.out.println("Dominio inválido, ingréselo nuevamente: ");
             respuesta = scanner.nextLine();
@@ -172,61 +213,66 @@ public class Vtv {
 
         rs = stmtReportePersonal.executeQuery(consultarVehiculos);
 
+        /* Si quisiera solo la última inspección en el select pongo order by i.fecha desc
+            Y dentro de este while un break, lo que haría es encontrar la primera vez q
+            coincidan la patente con la que entró el user y solo levantaria ese reporte
+            que es justamente el mas reciente.
+         */
         while(rs.next()){
             if(respuesta.equals(rs.getString("dominio"))){
 
-                String marca = rs.getString("marca");
-                String modelo = rs.getString("modelo");
-                String dominio = rs.getString("dominio");
-
-                String titular = rs.getString("titular");
-                int documento = rs.getInt("dni");
-                boolean exento = rs.getBoolean("exento");
-
-                Date fecha = rs.getDate("fecha");
-                String estado = rs.getString("estado");
-                String nombreInspector = rs.getString("nombre_inspector");
-
-
-                Map<String, String> observaciones = new HashMap<String, String>();
-
-                String luces = rs.getString("luces");
-                String patente = rs.getString("patente");
-                String espejos = rs.getString("espejos");
-                String chasis = rs.getString("chasis");
-                String vidrios = rs.getString("vidrios");
-                String seguridadEmergencia = rs.getString("seguridad_y_emergencia");
-
-                observaciones.put("luces", luces);
-                observaciones.put("patente", patente);
-                observaciones.put("espejos", espejos);
-                observaciones.put("chasis", chasis);
-                observaciones.put("vidrios", vidrios);
-                observaciones.put("seguridadEmergencia", seguridadEmergencia);
-
-                Map<String, String> mediciones = new HashMap<String, String>();
-
-                String suspension = rs.getString("suspension");
-                String direccionTrenDelantero = rs.getString("dirección_y_tren_delantero");
-                String frenos = rs.getString("frenos");
-                String contaminacion = rs.getString("contaminacion");
-
-                mediciones.put("suspension", suspension);
-                mediciones.put("direccionTrenDelantero", direccionTrenDelantero);
-                mediciones.put("frenos", frenos);
-                mediciones.put("contaminacion", contaminacion);
-
-                Inspeccion inspeccion = new Inspeccion(marca, modelo, dominio, titular, documento, exento,
-                                        fecha, estado, nombreInspector, observaciones, mediciones);
-
+                Inspeccion inspeccion = crearInspeccion(rs);
                 inspeccion.imprimirReporteDetallado();
-
-                break;
 
             }
         }
 
+    }
 
+    private static Inspeccion crearInspeccion(ResultSet rs) throws SQLException {
+        String marca = rs.getString("marca");
+        String modelo = rs.getString("modelo");
+        String dominio = rs.getString("dominio");
+
+        String titular = rs.getString("titular");
+        int documento = rs.getInt("dni");
+        boolean exento = rs.getBoolean("exento");
+
+        Date fecha = rs.getDate("fecha");
+        String estado = rs.getString("estado");
+        String nombreInspector = rs.getString("nombre_inspector");
+
+
+        Map<String, String> observaciones = new HashMap<String, String>();
+
+        String luces = rs.getString("luces");
+        String patente = rs.getString("patente");
+        String espejos = rs.getString("espejos");
+        String chasis = rs.getString("chasis");
+        String vidrios = rs.getString("vidrios");
+        String seguridadEmergencia = rs.getString("seguridad_y_emergencia");
+
+        observaciones.put("luces", luces);
+        observaciones.put("patente", patente);
+        observaciones.put("espejos", espejos);
+        observaciones.put("chasis", chasis);
+        observaciones.put("vidrios", vidrios);
+        observaciones.put("seguridadEmergencia", seguridadEmergencia);
+
+        Map<String, String> mediciones = new HashMap<String, String>();
+
+        String suspension = rs.getString("suspension");
+        String direccionTrenDelantero = rs.getString("dirección_y_tren_delantero");
+        String frenos = rs.getString("frenos");
+        String contaminacion = rs.getString("contaminacion");
+
+        mediciones.put("suspension", suspension);
+        mediciones.put("direccionTrenDelantero", direccionTrenDelantero);
+        mediciones.put("frenos", frenos);
+        mediciones.put("contaminacion", contaminacion);
+
+        return new Inspeccion(marca, modelo, dominio, titular, documento, exento,
+                fecha, estado, nombreInspector, observaciones, mediciones);
     }
 
 }
