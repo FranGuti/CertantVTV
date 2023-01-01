@@ -3,4 +3,9 @@ public class EstadoVTVCondicional implements EstadoVTV{
     public void imprimirResumen() {
         System.out.print("condicional");
     }
+
+    @Override
+    public String getEstado() {
+        return "condicional";
+    }
 }

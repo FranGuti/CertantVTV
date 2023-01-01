@@ -3,4 +3,9 @@ public class EstadoVTVApto implements EstadoVTV{
     public void imprimirResumen() {
         System.out.print("apto");
     }
+
+    @Override
+    public String getEstado() {
+        return "apto";
+    }
 }

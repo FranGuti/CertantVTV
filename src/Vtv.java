@@ -1,5 +1,10 @@
+import exceptions.InspectorEnDBException;
+
 import java.sql.*;
 import java.sql.Date;
+import java.text.DateFormat;
+import java.text.ParseException;
+import java.text.SimpleDateFormat;
 import java.util.*;
 
 
@@ -8,7 +13,7 @@ public class Vtv {
     private static Connection server;
 
 
-    public static void main(String[] args) throws SQLException {
+    public static void main(String[] args) throws SQLException, ParseException {
         server = con.conectar();
 
         System.out.println("**************************************************");
@@ -25,7 +30,7 @@ public class Vtv {
             if("1".equals(respuesta)){
 
                 System.out.println("(1) Reporte de automóviles, (2) Reporte de inspecciones, (3) Reporte Personal");
-                String respuestaDeReportes = consultarInput(scanner, "1", "2", "3", "");;
+                String respuestaDeReportes = consultarInput(scanner, "1", "2", "3", "");
 
                 if("1".equals(respuestaDeReportes)){
 
@@ -47,22 +52,20 @@ public class Vtv {
             if("2".equals(respuesta)){
 
                 System.out.println("(1) Agregar (2) Quitar (3) Modificar");
-                String respuestaABM = scanner.nextLine();
-
-                //Chequeo la validez del comando
-                while(!"1".equals(respuestaABM) && !"2".equals(respuestaABM) && !"3".equals(respuestaABM)){
-                    System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
-                    respuestaABM = scanner.nextLine();
-                }
+                String respuestaABM = consultarInput(scanner, "1", "2", "3", "");
 
                 if("1".equals(respuestaABM)){
                     System.out.println("(1) Agregar una Inspección (2) Agregar un Inspector");
-                    String respuestaAlta = scanner.nextLine();
+                    String respuestaAlta = consultarInput(scanner, "1", "2", "", "");
 
-                    //Chequeo la validez del comando
-                    while(!"1".equals(respuestaAlta) && !"2".equals(respuestaAlta)){
-                        System.out.println("Comando inválido, ingrese el movimiento nuevamente: ");
-                        respuestaAlta = scanner.nextLine();
+                    if("1".equals(respuestaAlta)){
+                        Inspeccion inspeccion = pedirInspeccion(scanner);
+                        if(inspeccion != null) {
+                            inspeccion.agregarADataBase(server);
+                        }
+                    }
+                    if("2".equals(respuestaAlta)){
+                        agregarInspector(scanner);
                     }
                 }
 
@@ -81,6 +84,190 @@ public class Vtv {
             }
         }
 
+
+    }
+
+    private static Inspeccion pedirInspeccion(Scanner scanner) throws SQLException, ParseException {
+        System.out.println("Ingrese la fecha de inspección en formato YYYY-MM-DD: ");
+        Date fecha = pedirFecha(scanner);
+
+        System.out.println("Marca del vehículo:");
+        String marca = scanner.nextLine();
+        System.out.println();
+
+        System.out.println("Modelo del vehículo:");
+        String modelo = scanner.nextLine();
+        System.out.println();
+
+        System.out.println("Dominio:");
+        String dominio = scanner.nextLine();
+        System.out.println();
+
+        System.out.println("Nombre del propietario: ");
+        String titular = scanner.nextLine();
+        System.out.println();
+
+        System.out.println("DNI:");
+        int dni = Integer.parseInt(scanner.nextLine());
+        System.out.println();
+
+        System.out.println("(1) Dueño común  (2) Dueño exento");
+        String respuestaTipo = consultarInput(scanner, "1", "2", "", "");
+        boolean exento = !"1".equals(respuestaTipo);
+        System.out.println();
+
+        System.out.println("Ingrese número de matricula del inspector a cargo:");
+        String nombreInspector = consultarInspector(scanner);
+        if(nombreInspector.isEmpty()){
+            System.out.println("Parece que el inspector no se encuentra registrado");
+            System.out.println("Desea: (1) Registrar nuevo inspector  (2) Salir");
+            String respuesta = consultarInput(scanner, "1", "2", "", "");
+            if("1".equals(respuesta)){
+                nombreInspector = agregarInspector(scanner);
+                System.out.println("Continuemos con los datos de inspección");
+            }
+            if("2".equals(respuesta)){
+                System.out.println();
+                return null;
+            }
+        }
+        System.out.println();
+
+        String estado = "apto";
+
+        System.out.println("Observaciones:");
+        Map<String, String> observaciones = new HashMap<>();
+        observaciones.put("luces" , "");
+        observaciones.put("patente", "");
+        observaciones.put("espejos", "");
+        observaciones.put("chasis", "");
+        observaciones.put("vidrios", "");
+        observaciones.put("seguridad y emergencia", "");
+
+        String estadoObservacion = pedirYVerificarEstados(observaciones, scanner);
+        System.out.println();
+
+        System.out.println("Mediciones:");
+        Map<String, String> mediciones = new HashMap<>();
+        mediciones.put("suspension" , "");
+        mediciones.put("dirección y tren delantero", "");
+        mediciones.put("frenos", "");
+        mediciones.put("contaminacion", "");
+
+        String estadoMedicion = pedirYVerificarEstados(mediciones, scanner);
+        System.out.println();
+
+        if("apto".equals(estadoObservacion) && "condicional".equals(estadoMedicion) ||
+        "condicional".equals(estadoObservacion) && "apto".equals(estadoMedicion) ||
+        "condicional".equals(estadoObservacion) && "condicional".equals(estadoMedicion)){
+            estado = "condicional";
+        }
+
+        if("rechazado".equals(estadoMedicion) || "rechazado".equals(estadoObservacion)){
+            estado = "rechazado";
+        }
+
+        return new Inspeccion(marca, modelo, dominio, titular, dni,
+        exento, fecha, estado, nombreInspector, observaciones, mediciones);
+
+    }
+
+    private static String pedirYVerificarEstados(Map<String, String> map, Scanner scanner){
+        String estado = "apto";
+        for(Map.Entry<String,String> entry : map.entrySet()){
+            System.out.printf("El resultado de %s fué (1) Apto  (2) Condicional (3) Rechazado%n",
+                    entry.getKey());
+            String respuesta = consultarInput(scanner, "1", "2", "3", "");
+            String resultado = parseRespuestaEstado(respuesta);
+            map.replace(entry.getKey(), resultado);
+            if("condicional".equals(resultado) && "apto".equals(estado)){
+                estado = "condicional";
+            }
+            if("rechazado".equals(resultado)){
+                estado = "rechazado";
+            }
+        }
+        return estado;
+    }
+
+    private static String parseRespuestaEstado(String respuesta) {
+        if("1".equals(respuesta)){
+            return "apto";
+        }
+        if("2".equals(respuesta)){
+            return "condicional";
+        }
+        return "rechazado";
+    }
+
+    private static String agregarInspector(Scanner scanner) throws SQLException {
+        System.out.println("Ingrese el nombre del inspector: ");
+        String inspector = scanner.nextLine();
+        if(!inspectorEnDataBase(inspector)){
+            Statement stmtAgregarInspector = server.createStatement();
+            String consultaAgregarInspector = "INSERT INTO inspectores(nombre) VALUES ('" + inspector + "');";
+            stmtAgregarInspector.executeUpdate(consultaAgregarInspector);
+        }
+        return inspector;
+    }
+
+    private static boolean inspectorEnDataBase(String inspector) throws SQLException {
+        Statement stmtInspectorNuevo = server.createStatement();
+        String consultaEstaInspector = "SELECT * FROM inspectores i WHERE i.nombre = '" + inspector + "';";
+        ResultSet rs = stmtInspectorNuevo.executeQuery(consultaEstaInspector);
+        return rs.next();
+    }
+
+
+    private static String consultarEstado(Scanner scanner) {
+        String input = consultarInput(scanner, "1", "2", "3", "");
+        if("1".equals(input)){
+            return "apto";
+        }
+        if("2".equals(input)){
+            return "condicional";
+        }
+        else{
+            return "rechazado";
+        }
+    }
+
+    private static Date pedirFecha(Scanner scanner) throws ParseException {
+        String input = scanner.nextLine();
+
+        while(!esFechaValida(input)){
+            System.out.println("Formato de fecha inválido, ingresela nuevamente de la forma YYYY-MM-DD");
+            input = scanner.nextLine();
+        }
+
+        java.util.Date dia = new SimpleDateFormat("yyyy-MM-dd").parse(input);
+
+        return new Date(dia.getTime());
+    }
+
+    private static boolean esFechaValida(String fecha) {
+        DateFormat sdf = new SimpleDateFormat("yyyy-MM-dd");
+        sdf.setLenient(false);
+        try {
+            sdf.parse(fecha);
+        } catch (ParseException e) {
+            return false;
+        }
+        return true;
+    }
+
+    private static String consultarInspector(Scanner scanner) throws SQLException {
+        int respuesta = Integer.parseInt(scanner.nextLine());
+
+        Statement stmtInspector =  server.createStatement();
+        String consultarInspectores = "SELECT * FROM inspectores i WHERE i.id = " + respuesta + ";";
+        ResultSet rs = stmtInspector.executeQuery(consultarInspectores);
+
+        if(!rs.next()){
+            return "";
+        }
+
+        return rs.getString("nombre");
 
     }
 

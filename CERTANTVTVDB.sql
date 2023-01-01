@@ -8,6 +8,7 @@ CREATE TABLE dueños(
     exento bool not null,
     PRIMARY KEY (id)
 );
+SELECT * FROM dueños;
 
 CREATE TABLE vehiculos (
 	id int not null auto_increment,
@@ -18,12 +19,14 @@ CREATE TABLE vehiculos (
     primary key(ID),
     foreign key(dueño) references dueños(id)
 );
+SELECT * FROM vehiculos;
 
 CREATE TABLE inspectores (
 	id int not null auto_increment,
     nombre varchar(255),
     PRIMARY KEY (id)
 );
+SELECT * FROM inspectores;
 
 CREATE TABLE observaciones (
 	id int not null auto_increment,
@@ -35,6 +38,7 @@ CREATE TABLE observaciones (
     seguridad_y_emergencia varchar(255) not null,
     primary key (id)
 );
+SELECT * FROM observaciones;
 
 CREATE TABLE mediciones (
 	id int not null auto_increment,
@@ -44,6 +48,7 @@ CREATE TABLE mediciones (
     contaminacion varchar(255) not null,
     primary key (id)
 );
+SELECT * FROM mediciones;
 
 CREATE TABLE inspecciones (
 	id int not null auto_increment,
@@ -166,10 +171,16 @@ FROM vehiculos v
 		ON i.medicion = m.id
 	ORDER BY i.fecha desc;
 
-SELECT v.marca, v.modelo, v.dominio, d.nombre, i.estado, i.fecha
+SELECT v.marca, v.modelo, v.dominio, d.nombre, i.estado, MAX(i.fecha) as fecha, v.id
 FROM vehiculos v
 	INNER JOIN dueños d
 		ON v.dueño = d.id
 	INNER JOIN inspecciones i 
 		ON v.id = i.vehiculo
-	WHERE i.estado = 'apto';
+	GROUP BY v.dominio
+    HAVING i.estado = 'condicional';
+
+SELECT * FROM inspectores i WHERE i.id = 12031;
+
+SELECT obs.id FROM observaciones obs WHERE obs.luces = 'apto' AND obs.patente = 'rechazado' AND obs.espejos = 'apto' 
+AND obs.chasis = 'apto' AND obs.vidrios = 'apto' AND obs.seguridad_y_emergencia = 'apto';
