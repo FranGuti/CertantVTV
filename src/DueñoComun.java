@@ -20,4 +20,9 @@ public class DueñoComun extends Dueño{
                 "VALUES ('" + this.nombre + "', " + this.dni + ", false);";
         stmtAgregarExento.executeUpdate(consultaAgregarExento);
     }
+
+    @Override
+    public String getTipo() {
+        return "Dueño común";
+    }
 }

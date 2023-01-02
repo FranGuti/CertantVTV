@@ -29,8 +29,8 @@ public class Vtv {
 
             if("1".equals(respuesta)){
 
-                System.out.println("(1) Reporte de automóviles, (2) Reporte de inspecciones, (3) Reporte Personal");
-                String respuestaDeReportes = consultarInput(scanner, "1", "2", "3", "");
+                System.out.println("(1) Reporte de automóviles, (2) Reporte Personal");
+                String respuestaDeReportes = consultarInput(scanner, "1", "2", "", "");
 
                 if("1".equals(respuestaDeReportes)){
 
@@ -39,10 +39,8 @@ public class Vtv {
                     String respuestaDeAutomoviles = consultarInput(scanner, "1", "2", "3", "4");
                     imprimirReporteDeAutomoviles(respuestaDeAutomoviles);
                 }
+
                 if("2".equals(respuestaDeReportes)){
-                    imprimirReporteDeInspecciones();
-                }
-                if("3".equals(respuestaDeReportes)){
                     System.out.println("Ingrese el número de DNI: ");
                     String dni = scanner.nextLine();
                     imprimirReportePersonal(dni);
@@ -74,7 +72,34 @@ public class Vtv {
                 }
 
                 if("3".equals(respuestaABM)){
-                    modificarInspeccion();
+                    System.out.println("(1) Modificar datos de Vehiculo (2) Modificar datos de Inspector " +
+                            "(3) Modificar datos de inspección");
+                    String respuestaModificacion = consultarInput(scanner, "1", "2", "3", "");
+
+                    if("1".equals(respuestaModificacion)){
+                        System.out.println("Ingrese el dominio del Vehiculo que desea modificar: ");
+                        String dominio = pedirDominio(scanner);
+                        System.out.println();
+                        if(!dominio.isEmpty()) {
+                            modificarVehiculo(scanner, dominio);
+                        }
+                    }
+
+                    if("2".equals(respuestaModificacion)){
+                        System.out.println("Ingrese el nombre del inspector que desea modificar: ");
+                        String nombre = scanner.nextLine();
+                        if(!nombre.isEmpty()){
+                            modificarInspector(scanner, nombre);
+                        }
+
+                    }
+
+                    if("3".equals(respuestaModificacion)){
+                        System.out.println("Ingrese el número de inspección que desea modificar: ");
+                        int numero = Integer.parseInt(scanner.nextLine()); //explota si no me pasan un entero
+                        modificarInspeccion(scanner, numero);
+                    }
+
                 }
             }
 
@@ -85,6 +110,142 @@ public class Vtv {
         }
 
 
+    }
+
+    private static void modificarInspector(Scanner scanner, String nombre) throws SQLException {
+        System.out.println("Escriba el nuevo nombre del inspector: ");
+        String nuevoNombre = scanner.nextLine();
+        while(inspectorEnDataBase(nuevoNombre)){
+            System.out.println("Ese inspector ya se encuentra en el sistema");
+            System.out.println("Desea (1) Intentar con otro (2) Volver");
+            String respuesta = consultarInput(scanner, "1", "2", "", "");
+            if("2".equals(respuesta)){
+                return;
+            }
+            System.out.println("Ingrese el nuevo nombre: ");
+            nuevoNombre = scanner.nextLine();
+        }
+        Statement stmtUpdateInspector = server.createStatement();
+        String consultaUpdateInspector = "UPDATE inspectores SET nombre = '" + nuevoNombre + "' WHERE nombre = '" +
+                nombre + "';";
+        stmtUpdateInspector.executeUpdate(consultaUpdateInspector);
+
+    }
+
+    private static String pedirDominio(Scanner scanner) throws SQLException {
+        String dominio = scanner.nextLine();
+
+        Statement stmtPedirDominio = server.createStatement();
+        String consultaDominios = "SELECT v.dominio FROM vehiculos v WHERE v.dominio = '" + dominio + "';";
+        ResultSet rs = stmtPedirDominio.executeQuery(consultaDominios);
+
+        while(!rs.next()){
+            System.out.println("No se encontró el dominio en el sistema");
+            System.out.println("Desea (1) Ingresar otro (2) Volver");
+            String resultado = consultarInput(scanner, "1", "2", "", "");
+            if("2".equals(resultado)){
+                return "";
+            }
+            System.out.println("Ingrese el dominio: ");
+            dominio = scanner.nextLine();
+            consultaDominios = "SELECT v.dominio FROM vehiculos v WHERE v.dominio = '" + dominio + "';";
+            rs = stmtPedirDominio.executeQuery(consultaDominios);
+        }
+        return rs.getString("dominio");
+    }
+
+    private static void modificarVehiculo(Scanner scanner, String dominio) throws SQLException {
+        Vehiculo vehiculoAModificar = new Vehiculo(dominio);
+
+        System.out.println("En caso de no querer modificar el campo dejar vacío");
+        System.out.println("Ingrese la nueva marca: ");
+        String marca = scanner.nextLine();
+        if(!marca.isEmpty()){
+            vehiculoAModificar.cambiarMarca(marca);
+        }
+        System.out.println();
+
+        System.out.println("Ingrese el nuevo modelo: ");
+        String modelo = scanner.nextLine();
+        if(!modelo.isEmpty()){
+            vehiculoAModificar.cambiarModelo(modelo);
+        }System.out.println();
+
+        System.out.println("Ingrese nuevo dominio: ");
+        String inputDominio = pedirDominioNoUsado(scanner);
+        if(!inputDominio.isEmpty()){
+            vehiculoAModificar.cambiarDominio(inputDominio);
+        }System.out.println();
+
+        Dueño nuevoDuenio = pedirDuenio(scanner);
+        if(nuevoDuenio != null){
+            vehiculoAModificar.cambiarDuenio(nuevoDuenio);
+        }
+
+        vehiculoAModificar.actualizar(server, dominio);
+    }
+
+    private static String pedirDominioNoUsado(Scanner scanner) throws SQLException {
+        String dominio = scanner.nextLine();
+        Statement stmtDominioNoUsado = server.createStatement();
+        String consultaDominio = "SELECT dominio FROM vehiculos WHERE dominio = '" + dominio + "';";
+        ResultSet rs = stmtDominioNoUsado.executeQuery(consultaDominio);
+        while (rs.next()){
+            System.out.println("Ya hay un vehiculo registrado bajo ese dominio");
+            System.out.println("Quiere (1) Ingresar otro (2) Saltar");
+            String respuesta = consultarInput(scanner, "1", "2", "", "");
+            if("2".equals(respuesta)){
+                return "";
+            }
+            System.out.println("Ingrese el dominio:");
+            String nuevoDominio = scanner.nextLine();
+            consultaDominio = "SELECT dominio FROM vehiculos WHERE dominio = '" + nuevoDominio + "';";
+            rs = stmtDominioNoUsado.executeQuery(consultaDominio);
+        }
+        return dominio;
+    }
+
+    private static Dueño pedirDuenio(Scanner scanner) throws SQLException {
+        System.out.println("Ingrese el nuevo duenio:");
+        String duenio = scanner.nextLine();
+
+
+        if(!duenio.isEmpty()){
+            System.out.println("Ingrese el DNI del nuevo dueño:");
+            String dni = scanner.nextLine();
+
+            Dueño nuevoDuenio = buscarEnDB(dni);
+
+            if(nuevoDuenio != null){
+                System.out.println("Ese titular está en nuestros sistemas, será asignado");
+                return nuevoDuenio;
+            }
+
+            System.out.println("Es (1) Dueño Común (2) Dueño Exento:");
+            String exento = consultarInput(scanner, "1", "2", "", "");
+            if("1".equals(exento)){
+                nuevoDuenio = new DueñoComun(duenio, Integer.parseInt(dni));
+            }
+            else{
+                nuevoDuenio = new DueñoExento(duenio, Integer.parseInt(dni));
+            }
+            return nuevoDuenio;
+        }
+
+        return null;
+    }
+
+    private static Dueño buscarEnDB(String dni) throws SQLException {
+        Statement stmtBuscarDuenio = server.createStatement();
+        String consultaDuenio = "SELECT * FROM dueños WHERE dni = " + dni + ";";
+        ResultSet rs = stmtBuscarDuenio.executeQuery(consultaDuenio);
+        if(rs.next()){
+            if(rs.getBoolean("exento")){
+                return new DueñoExento(rs.getString("nombre"), Integer.parseInt(dni));
+            }
+            return new DueñoComun(rs.getString("nombre"), Integer.parseInt(dni));
+        }
+        return null;
     }
 
     private static Inspeccion pedirInspeccion(Scanner scanner) throws SQLException, ParseException {
@@ -133,43 +294,52 @@ public class Vtv {
         }
         System.out.println();
 
-        String estado = "apto";
-
-        System.out.println("Observaciones:");
         Map<String, String> observaciones = new HashMap<>();
+        String estadoObservacion = pedirObservaciones(scanner, observaciones);
+
+        Map<String, String> mediciones = new HashMap<>();
+        String estadoMedicion = pedirMediciones(scanner, mediciones);
+
+        String estado = concluirEstado(estadoObservacion, estadoMedicion);
+
+        return new Inspeccion(marca, modelo, dominio, titular, dni,
+        exento, fecha, estado, nombreInspector, observaciones, mediciones);
+
+    }
+
+    private static String concluirEstado(String estadoObservacion, String estadoMedicion) {
+        if("apto".equals(estadoObservacion) && "condicional".equals(estadoMedicion) ||
+                "condicional".equals(estadoObservacion) && "apto".equals(estadoMedicion) ||
+                "condicional".equals(estadoObservacion) && "condicional".equals(estadoMedicion)){
+            return "condicional";
+        }
+
+        if("rechazado".equals(estadoMedicion) || "rechazado".equals(estadoObservacion)){
+            return "rechazado";
+        }
+        return "apto";
+    }
+
+    private static String pedirMediciones(Scanner scanner, Map<String, String> mediciones) {
+        System.out.println("Mediciones:");
+        mediciones.put("suspension" , "");
+        mediciones.put("dirección y tren delantero", "");
+        mediciones.put("frenos", "");
+        mediciones.put("contaminacion", "");
+        System.out.println();
+        return pedirYVerificarEstados(mediciones, scanner);
+    }
+
+    private static String pedirObservaciones(Scanner scanner, Map<String, String> observaciones) {
+        System.out.println("Observaciones:");
         observaciones.put("luces" , "");
         observaciones.put("patente", "");
         observaciones.put("espejos", "");
         observaciones.put("chasis", "");
         observaciones.put("vidrios", "");
         observaciones.put("seguridad y emergencia", "");
-
-        String estadoObservacion = pedirYVerificarEstados(observaciones, scanner);
         System.out.println();
-
-        System.out.println("Mediciones:");
-        Map<String, String> mediciones = new HashMap<>();
-        mediciones.put("suspension" , "");
-        mediciones.put("dirección y tren delantero", "");
-        mediciones.put("frenos", "");
-        mediciones.put("contaminacion", "");
-
-        String estadoMedicion = pedirYVerificarEstados(mediciones, scanner);
-        System.out.println();
-
-        if("apto".equals(estadoObservacion) && "condicional".equals(estadoMedicion) ||
-        "condicional".equals(estadoObservacion) && "apto".equals(estadoMedicion) ||
-        "condicional".equals(estadoObservacion) && "condicional".equals(estadoMedicion)){
-            estado = "condicional";
-        }
-
-        if("rechazado".equals(estadoMedicion) || "rechazado".equals(estadoObservacion)){
-            estado = "rechazado";
-        }
-
-        return new Inspeccion(marca, modelo, dominio, titular, dni,
-        exento, fecha, estado, nombreInspector, observaciones, mediciones);
-
+        return pedirYVerificarEstados(observaciones, scanner);
     }
 
     private static String pedirYVerificarEstados(Map<String, String> map, Scanner scanner){
@@ -218,19 +388,6 @@ public class Vtv {
         return rs.next();
     }
 
-
-    private static String consultarEstado(Scanner scanner) {
-        String input = consultarInput(scanner, "1", "2", "3", "");
-        if("1".equals(input)){
-            return "apto";
-        }
-        if("2".equals(input)){
-            return "condicional";
-        }
-        else{
-            return "rechazado";
-        }
-    }
 
     private static Date pedirFecha(Scanner scanner) throws ParseException {
         String input = scanner.nextLine();
@@ -281,12 +438,71 @@ public class Vtv {
     }
 
 
-    private static void agregarInspeccion() {
-        System.out.println("Se agregó la inspección");
+    private static void modificarInspeccion(Scanner scanner, int numero) throws SQLException, ParseException {
+        Statement stmtModificarInspeccion = server.createStatement();
+        String consultarInspeccion = "SELECT * FROM inspecciones WHERE id = " + numero + ";";
+        ResultSet rs = stmtModificarInspeccion.executeQuery(consultarInspeccion);
+        if(!rs.next()){
+            System.out.println("No se encontró la inspección");
+            return;
+        }
+
+        Inspeccion nuevaInspeccion = pedirinspeccionParaEditar(scanner);
+        nuevaInspeccion.actualizar(server, numero);
+
     }
 
-    private static void modificarInspeccion() {
-        System.out.println("Se modificó la inspección");
+    private static Inspeccion pedirinspeccionParaEditar(Scanner scanner) throws SQLException {
+        System.out.println("Si desea no modificar algún campo simplemente dejelo vacío");
+        System.out.println("Ingrese el dominio del nuevo vehículo: ");
+        String dominio = pedirDominio(scanner);
+        Vehiculo vehiculo = null;
+        if(!dominio.isEmpty()){
+            vehiculo = new Vehiculo(dominio);
+        }
+
+        Map<String, String> observaciones = new HashMap<>();
+        Map<String, String> mediciones = new HashMap<>();
+        String estadoObservacion;
+        String estadoMedicion;
+        String estado = null;
+
+        System.out.println("Ingrese una tecla cualquiera para modificar las observaciones y mediciones: ");
+        String cambio = scanner.nextLine();
+
+        if(!cambio.isEmpty()){
+             estadoObservacion = pedirObservaciones(scanner, observaciones);
+            estadoMedicion = pedirMediciones(scanner, mediciones);
+            estado = concluirEstado(estadoObservacion, estadoMedicion);
+        }
+
+        System.out.println("Ingrese el nuevo inspector: ");
+        String nombreInspector = scanner.nextLine();
+        boolean salir = false;
+        if(!nombreInspector.isEmpty()){
+            while(!estaEnDB(nombreInspector)){
+                System.out.println("El inspector no se encuentra en el sistema");
+                System.out.println("Desea (1) Ingresar otro (2) Volver");
+                String respuesta = consultarInput(scanner, "1", "2", "", "");
+                if("2".equals(respuesta)){
+                    salir = true;
+                    break;
+                }
+                nombreInspector = scanner.nextLine();
+            }
+            if(salir){
+               nombreInspector = "";
+            }
+        }
+        return new Inspeccion(vehiculo, estado, observaciones, mediciones, nombreInspector);
+
+    }
+
+    private static boolean estaEnDB(String nombreInspector) throws SQLException {
+        Statement stmtBuscarInspector = server.createStatement();
+        String consultaInspector = "SELECT * FROM inspectores WHERE nombre = '" + nombreInspector + "';";
+        ResultSet rs = stmtBuscarInspector.executeQuery(consultaInspector);
+        return rs.next();
     }
 
     private static void quitarInspeccion() {

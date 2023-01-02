@@ -12,9 +12,9 @@ public abstract class Dueño {
     public abstract void imprimirResumen();
 
     public String getID(Connection con) throws SQLException {
-        Statement stmtDueñoId = con.createStatement();
-        String consultaIDDueño = "SELECT d.id FROM dueños d WHERE d.dni = " + this.dni + ";";
-        ResultSet rs = stmtDueñoId.executeQuery(consultaIDDueño);
+        Statement stmtDuenioId = con.createStatement();
+        String consultaIDDuenio = "SELECT d.id FROM dueños d WHERE d.dni = " + this.dni + ";";
+        ResultSet rs = stmtDuenioId.executeQuery(consultaIDDuenio);
         if(!rs.next()){
             throw new DueñoNoEnDBException("El dueño solicitado no se encuentra en la base de datos");
         }
@@ -26,5 +26,15 @@ public abstract class Dueño {
 
     public void imprimirNombre() {
         System.out.println(this.nombre);
+    }
+
+    public abstract String getTipo();
+
+    public String getNombre() {
+        return this.nombre;
+    }
+
+    public int getDNI() {
+        return this.dni;
     }
 }

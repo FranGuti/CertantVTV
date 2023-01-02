@@ -184,3 +184,4 @@ SELECT * FROM inspectores i WHERE i.id = 12031;
 
 SELECT obs.id FROM observaciones obs WHERE obs.luces = 'apto' AND obs.patente = 'rechazado' AND obs.espejos = 'apto' 
 AND obs.chasis = 'apto' AND obs.vidrios = 'apto' AND obs.seguridad_y_emergencia = 'apto';
+

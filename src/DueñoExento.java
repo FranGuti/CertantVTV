@@ -20,4 +20,9 @@ public class DueñoExento extends Dueño{
                 "VALUES ('" + this.nombre + "', " + this.dni + ", true);";
         stmtAgregarExento.executeUpdate(consultaAgregarExento);
     }
+
+    @Override
+    public String getTipo() {
+        return "Dueño Exento";
+    }
 }

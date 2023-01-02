@@ -1,7 +1,4 @@
-import exceptions.InspectorNoEnDBException;
-import exceptions.MedicionesNoEnBDException;
-import exceptions.ObservacionesNoEnDBException;
-import exceptions.VehiculoNoEnDBException;
+import exceptions.*;
 
 import javax.swing.plaf.nimbus.State;
 import java.sql.Connection;
@@ -54,6 +51,16 @@ public class Inspeccion {
         this.vehiculo = new Vehiculo(dominio, marca, modelo, this.duenio);
         this.fecha = fecha;
         asignarEstadoYVencimiento(estado);
+    }
+
+    public Inspeccion(Vehiculo vehiculo, String estado, Map<String, String> observaciones,
+                      Map<String, String> mediciones, String nombreInspector) {
+        this.fecha = new Date();
+        asignarEstadoYVencimiento(estado);
+        this.vehiculo = vehiculo;
+        this.observaciones = observaciones;
+        this.mediciones = mediciones;
+        this.inspector = nombreInspector;
     }
 
     private void asignarEstadoYVencimiento(String estado) {
@@ -239,5 +246,50 @@ public class Inspeccion {
             throw new InspectorNoEnDBException("El inspector solicitado no está en la base de datos");
         }
         return Integer.toString(rs.getInt("id"));
+    }
+
+    public void actualizar(Connection server, int numero) throws SQLException {
+
+        try {
+            Statement stmtActualizar = server.createStatement();
+            String consultaActualizar = "UPDATE inspecciones SET ";
+
+            if(this.inspector != null){
+                consultaActualizar = consultaActualizar + "inspector = " + inspectorGetID(server);
+            }
+
+            if(this.estado != null && this.inspector != null){
+                consultaActualizar = consultaActualizar + ", estado = '" + this.estado.getEstado() +
+                "', observacion = " + observacionesGetID(server) + ", medicion = " + medicionesGetID(server);
+            }
+            if(this.estado != null && this.inspector == null){
+                consultaActualizar = consultaActualizar + "estado = '" + this.estado.getEstado() +
+                        "', observacion = " + observacionesGetID(server) + ", medicion = " + medicionesGetID(server);
+            }
+
+            if(this.vehiculo != null && this.inspector != null || this.vehiculo != null && this.estado != null){
+                consultaActualizar = consultaActualizar + ", vehiculo = " + this.vehiculo.getID(server);
+            }
+            if(this.vehiculo != null && this.inspector == null && this.estado == null){
+                consultaActualizar = consultaActualizar + "vehiculo = " + this.vehiculo.getID(server);
+            }
+
+            consultaActualizar = consultaActualizar + " WHERE id = " + numero + ";";
+
+            stmtActualizar.executeUpdate(consultaActualizar);
+        } catch (ObservacionesNoEnDBException e) {
+            agregarObservacionesADataBase(server);
+            actualizar(server, numero);
+        } catch (MedicionesNoEnBDException e) {
+            agregarMedicionesADataBase(server);
+            actualizar(server, numero);
+        } catch (VehiculoNoEnDBException e) {
+            this.vehiculo.agregarADB(server);
+            actualizar(server, numero);
+        } catch (InspectorNoEnDBException e) {
+            agregarInspectorADataBase(server);
+            actualizar(server, numero);
+        }
+
     }
 }
